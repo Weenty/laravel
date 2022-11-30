@@ -8,16 +8,15 @@ class WeeksDateError extends Error {
 }
 
 function parseExcel() {
-    sheetJson = {}
+    let sheetJson = {}
+    let first_week
     fs.readdir('./public/schedule/', (err, files) => {
         files.forEach(async file => {
-            console.log(file)
             if (/(.+)\.xlsx/.test(file)) {
                 await XlsxPopulate.fromFileAsync("./public/schedule/" + file)
                     .then(workbook => {
-                        const first_week = workbook.sheet(0).cell("C6").value();
-                        const second_week = workbook.sheet(0).cell("C7").value();
-                        if (first_week == undefined || second_week == undefined) {
+                        first_week = workbook.sheet(0).cell("C6").value();
+                        if (first_week == undefined) {
                             throw new WeeksDateError("Не удалось распознать дни недели в Экселе.")
                         }
                         for (let i = 0; workbook.sheet(i) !== undefined; i++) {
@@ -25,8 +24,9 @@ function parseExcel() {
                             let groups = getGroups(sheet)
                             sheetJson = getPairs(sheet, groups, sheetJson)
                         }
-                        fs.writeFileSync('./public/schedule/data.json', JSON.stringify(sheetJson));
                     });
+                sheetJson['first_week'] = first_week
+                fs.writeFileSync('./public/schedule/data.json', JSON.stringify(sheetJson));
             }
         });
     })
@@ -113,9 +113,36 @@ function SetStatusWeek(sheet, color) {
     }
 }
 
+function getArrayDates() {
+    let stringWeek = JSON.parse(fs.readFileSync('./public/schedule/data.json', 'utf8'))["first_week"]
+    stringWeek = stringWeek.match(/1 неделя[\ ]+(.+)/)[1]
+    let arrayDates = stringWeek.split(',')
+    return arrayDates
+}
+
+function CkeckWeek(object) {
+    let result = []
+    // let currentDate = getCurrentDate()
+    let now = new Date()
+    let arrayDates = getArrayDates()
+    for(let i=0;i<arrayDates.length;i++) {
+        let date = arrayDates[i].split('.')
+    }
+    for (let i = 1; i <= 6; i++) {
+        for (let pair = 0; pair < object[i].length; pair++) {
+            if (object[i][pair].status == currentStatus || object[i][pair].status == 'all') {
+                result.push(object[i][pair])
+            }
+        }
+    }
+    return result
+}
+
 async function getSchedule(group) {
-    // parseExcel()
-    return await JSON.parse(fs.readFileSync('./public/schedule/data.json', 'utf8'))[group];
+    parseExcel()
+    json = CkeckWeek(JSON.parse(fs.readFileSync('./public/schedule/data.json', 'utf8'))[group])
+
+    // return await JSON.parse(fs.readFileSync('./public/schedule/data.json', 'utf8'))[group];
 }
 
 module.exports = {
